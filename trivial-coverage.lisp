@@ -44,8 +44,7 @@
 *keep-report* - if NIL, the generated HTML coverage files are removed  
 *stream* - the stream to which the coverage result shall be written"
   #+sbcl (declaim (optimize sb-cover:store-coverage-data))
-  #+quicklisp (ql:quickload system)
-  #-quicklisp (asdf:oos 'asdf:load-op system)
+  (asdf:oos 'asdf:load-op system :force t)
   #+sbcl (let ((report-path (merge-pathnames "coverage-report/" (asdf:system-source-directory system))))
 	   (sb-cover:reset-coverage)
 	   (asdf:oos 'asdf:test-op system)
