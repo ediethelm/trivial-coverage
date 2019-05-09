@@ -1,5 +1,5 @@
 (mgl-pax:define-package #:trivial-coverage
-  (:documentation "")
+  (:documentation "A simple Common Lisp library to print out the code coverage collected by sb-cover. As such it only supports SBCL.")
   (:use #:common-lisp #:mgl-pax)
   (:export #:test-and-print-coverage
            #:get-coverage))

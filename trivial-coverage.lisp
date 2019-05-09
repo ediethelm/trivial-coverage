@@ -1,3 +1,10 @@
+;;;; Copyright (c) Eric Diethelm 2019 <ediethelm@yahoo.com>
+;;;; This code is licensed under the MIT license.
+
+#+sbcl (eval-when (:compile-toplevel :load-toplevel)
+	   (require :sb-cover))
+
+(in-package #:trivial-coverage)
 
 (defun get-coverage-for-file (html)
   (let ((doc (lquery:$ (lquery:initialize html))))
@@ -10,6 +17,9 @@
 				       (parse-integer (aref (lquery:$ (inline (aref vals 2)) (text)) 0))))))))
 
 (defun get-coverage (report-path &key exclude)
+  "Calculates the total code coverage reported by sb-cover (via the HTML report) and returns this value.  
+*report-path* - the path to the directory containing the HTML coverage report  
+*exclude* - files to be excluded from the calculation"
   (let ((coverage (remove-if #'(lambda (s) (member (file-namestring (car s))
 						   exclude
 						   :test #'string=))
@@ -18,20 +28,32 @@
 					     (uiop:directory-files report-path)
 					     :key #'file-namestring
 					     :test #'string=)))))
-    (/ (reduce #'+ coverage :key #'second)
-       (reduce #'+ coverage :key #'third))))
 
-(defun pprint-coverage (coverage)
-  (format t "~%Test Coverage: ~1$%~%" (* 100 coverage)))
+    (let ((divisor (reduce #'+ coverage :key #'third)))
+      (if (eq 0 divisor)
+	  0
+	  (/ (reduce #'+ coverage :key #'second) divisor)))))
 
-(defun test-and-print-coverage (system &key exclude)
-  (declaim (optimize sb-cover:store-coverage-data))
-  (asdf:oos 'asdf:load-op system)
-  (let ((report-path (merge-pathnames "coverage-report/" (asdf:system-source-directory system))))
-    (sb-cover:reset-coverage)
-    (asdf:oos 'asdf:test-op system)
-    (sb-cover:report report-path)
-    (pprint-coverage (get-coverage report-path :exclude exclude))
-    (uiop:delete-directory-tree report-path :validate t))
-  (declaim (optimize (sb-cover:store-coverage-data 0))))
+(defun pprint-coverage (coverage &key (stream t))
+  (format stream "~%Test Coverage: ~1$%~%" (* 100 coverage)))
+
+(defun test-and-print-coverage (system &key exclude keep-report (stream t))
+  "Loads and tests the given *system* collecting coverage information. Also prints a line containing the coverage to *stream*.  
+*system* - name of the system to be tested  
+*exclude* - files to be excluded from the calculation  
+*keep-report* - if NIL, the generated HTML coverage files are removed  
+*stream* - the stream to which the coverage result shall be written"
+  #+sbcl (declaim (optimize sb-cover:store-coverage-data))
+  #+quicklisp (ql:quickload system)
+  #-quicklisp (asdf:oos 'asdf:load-op system)
+  #+sbcl (let ((report-path (merge-pathnames "coverage-report/" (asdf:system-source-directory system))))
+	   (sb-cover:reset-coverage)
+	   (asdf:oos 'asdf:test-op system)
+	   (sb-cover:report report-path)
+	   (pprint-coverage (get-coverage report-path :exclude exclude) :stream stream)
+	   (unless keep-report
+	     (uiop:delete-directory-tree report-path :validate t)))
+  #-sbcl (asdf:oos 'asdf:test-op system)
+  #-sbcl (warn "trivial-coverage only supports SBCL. Tests were executed, but no coverage information was collected.")
+  #+sbcl (declaim (optimize (sb-cover:store-coverage-data 0))))
   
