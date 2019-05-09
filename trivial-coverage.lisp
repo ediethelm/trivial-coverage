@@ -43,6 +43,7 @@
 *exclude* - files to be excluded from the calculation  
 *keep-report* - if NIL, the generated HTML coverage files are removed  
 *stream* - the stream to which the coverage result shall be written"
+  (ql:quickload system)  ;; We first use QuickLisp to get all needed dependencies
   #+sbcl (declaim (optimize sb-cover:store-coverage-data))
   (asdf:oos 'asdf:load-op system :force t)
   #+sbcl (let ((report-path (merge-pathnames "coverage-report/" (asdf:system-source-directory system))))
