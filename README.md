@@ -32,8 +32,8 @@ Assuming there is a system being tested and named :system-under-test, which has 
 ```lisp
 (trivial-coverage:test-and-print-coverage :system-under-test 
                                           :exclude '("test-system-under-test.lisp" 
-                                                    "test-data-generator.lisp"
-                                                    "documentation.lisp"))
+                                                     "test-data-generator.lisp"
+                                                     "documentation.lisp"))
 ```
 
 To access the coverage value programatically the following is possible:  
