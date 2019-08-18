@@ -29,11 +29,12 @@ and then loading it as usual via [QuickLisp](https://www.quicklisp.org/beta/ "Qu
 
 Assuming there is a system being tested and named :system-under-test, which has three files that should not be included in the coverage calculation. The following expression loads the system, executes the tests and reports the total coverage:  
 
-`lisp
-(trivial-coverage:test-and-print-coverage :system-under-test :exclude '("test-system-under-test.lisp" 
-                                                                        "test-data-generator.lisp"
-                                                                        "documentation.lisp"))
-`
+```lisp
+(trivial-coverage:test-and-print-coverage :system-under-test 
+                                          :exclude '("test-system-under-test.lisp" 
+                                                     "test-data-generator.lisp"
+                                                     "documentation.lisp"))
+```
 
 To access the coverage value programatically the following is possible:  
 
