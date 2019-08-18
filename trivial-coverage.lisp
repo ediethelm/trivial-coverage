@@ -1,11 +1,49 @@
 ;;;; Copyright (c) Eric Diethelm 2019 <ediethelm@yahoo.com>
 ;;;; This code is licensed under the MIT license.
 
-#+sbcl (eval-when (:compile-toplevel :load-toplevel)
-	   (require :sb-cover))
+(eval-when (:compile-toplevel :load-toplevel)
+  #+sbcl (require :sb-cover)
+  #-(or ccl sbcl) (warn "trivial-coverage only supports SBCL and CCL. Tests will executed, but no coverage information will collected."))
 
 (in-package #:trivial-coverage)
 
+(defun enable-coverage ()
+  #+sbcl (declaim (optimize sb-cover:store-coverage-data))
+  #+ccl (setq ccl:*compile-code-coverage* t))
+
+(defun disable-coverage ()
+  #+sbcl (declaim (optimize sb-cover:store-coverage-data 0))
+  #+ccl (setq ccl:*compile-code-coverage* nil))
+
+(defun clear-coverage ()
+  #+sbcl (sb-cover:reset-coverage)
+  #+ccl (ccl:reset-coverage))
+
+(defun create-coverage-report (path)
+  #+sbcl (sb-cover:report path)
+  #+ccl (ccl:report-coverage (merge-pathnames "cover-index.html" path) :html nil :statistics t))
+
+#+ccl
+(defun get-coverage (report-path &key exclude)
+  ;; https://ccl.clozure.com/docs/ccl.html
+
+  (let* ((data (cl-csv:read-csv (merge-pathnames "statistics.csv" report-path) :separator #\,))
+	 (source-pos (position "Source file" (car data) :test #'string=))
+	 (total-pos (position "Expressions Total"  (car data) :test #'string=))
+	 (result-pos (position "Expressions Entered" (car data) :test #'string=)))
+    (iterate:iterate
+      (iterate:for elm in (cdr data))
+      (unless (member (nth source-pos elm) exclude :test #'(lambda (x y)
+							     (search x y :test #'string=)))
+	(iterate:collect (parse-integer (nth result-pos elm)) into total)
+	(iterate:collect (parse-integer (nth total-pos elm)) into entered))
+      (iterate:finally (let ((sum-expressions (reduce #'+ total))
+			     (sum-entered (reduce #'+ entered)))
+			 (return (if (> sum-expressions 0)
+				     (/ sum-entered sum-expressions)
+				     0)))))))
+
+#+sbcl
 (defun get-coverage-for-file (html)
   (let ((doc (lquery:$ (lquery:initialize html))))
     (lquery:$ (inline (lquery:$ doc ".summary")) "tr"
@@ -16,6 +54,7 @@
 				       (parse-integer (aref (lquery:$ (inline (aref vals 1)) (text)) 0))
 				       (parse-integer (aref (lquery:$ (inline (aref vals 2)) (text)) 0))))))))
 
+#+sbcl
 (defun get-coverage (report-path &key exclude)
   "Calculates the total code coverage reported by sb-cover (via the HTML report) and returns this value.  
 *report-path* - the path to the directory containing the HTML coverage report  
@@ -43,16 +82,18 @@
 *exclude* - files to be excluded from the calculation  
 *keep-report* - if NIL, the generated HTML coverage files are removed  
 *stream* - the stream to which the coverage result shall be written"
-  #+sbcl (declaim (optimize sb-cover:store-coverage-data))
+  (enable-coverage)
   (asdf:oos 'asdf:load-op system :force t)
-  #+sbcl (let ((report-path (merge-pathnames "coverage-report/" (asdf:system-source-directory system))))
-	   (sb-cover:reset-coverage)
-	   (asdf:oos 'asdf:test-op system)
-	   (sb-cover:report report-path)
-	   (pprint-coverage (get-coverage report-path :exclude exclude) :stream stream)
-	   (unless keep-report
-	     (uiop:delete-directory-tree report-path :validate t)))
-  #-sbcl (asdf:oos 'asdf:test-op system)
-  #-sbcl (warn "trivial-coverage only supports SBCL. Tests were executed, but no coverage information was collected.")
-  #+sbcl (declaim (optimize (sb-cover:store-coverage-data 0))))
+  (let ((report-path (merge-pathnames "coverage-report/" (asdf:system-source-directory system))))
+    (clear-coverage)
+    (asdf:oos 'asdf:test-op system)
+    (create-coverage-report report-path)
+
+    #+(or ccl sbcl) (pprint-coverage (get-coverage report-path :exclude exclude) :stream stream)
+    #-(or ccl sbcl) (warn "trivial-coverage only supports SBCL and CCL. Tests were executed, but no coverage information was collected.")
+
+    (unless keep-report
+      (uiop:delete-directory-tree report-path :validate t)))
+
+  (disable-coverage))
   
