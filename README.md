@@ -6,7 +6,7 @@
 
 ## Description
 
-A simple Common Lisp library to print out the code coverage collected by sb-cover. As such it only supports SBCL.
+A simple Common Lisp library to print out the code coverage collected. Supports SBCL and CCL.
 
 ## Installing trivial-coverage
 
