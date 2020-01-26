@@ -2,7 +2,7 @@
 
 (defsystem :trivial-coverage
   :name "trivial-coverage"
-  :description "A simple Common Lisp library to print out the code coverage collected by sb-cover. As such it only supports SBCL."
+  :description "A simple Common Lisp library to print out the code coverage collected. Supports SBCL and CCL."
   :version "0.0.4"
   :author "Eric Diethelm <ediethelm@yahoo.com>"
   :licence "MIT"
